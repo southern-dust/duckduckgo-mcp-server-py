@@ -1,0 +1,36 @@
+{
+  "mcpServers": {
+    "duckduckgo-search-stdio": {
+      "command": "python",
+      "args": [
+        "-m",
+        "duckduckgo_mcp_server.server",
+        "--transport",
+        "stdio"
+      ]
+    },
+    "duckduckgo-search-http": {
+      "command": "curl",
+      "args": [
+        "-X", "POST",
+        "http://localhost:8080/mcp",
+        "-H", "Content-Type: application/json",
+        "-d", "@-"
+      ]
+    },
+    "duckduckgo-search-docker": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "duckduckgo-mcp-server:latest",
+        "python",
+        "-m",
+        "duckduckgo_mcp_server.server",
+        "--transport",
+        "stdio"
+      ]
+    }
+  }
+}

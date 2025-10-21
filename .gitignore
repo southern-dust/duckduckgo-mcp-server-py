@@ -1,0 +1,3 @@
+*.pyc
+src/duckduckgo_mcp_server.*/
+CLAUDE.md
