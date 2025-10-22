@@ -1,38 +1,49 @@
 version: '3.8'
 
 services:
-  # STDIO transport service (for direct integration)
-  duckduckgo-stdio:
+  # Unified DuckDuckGo MCP Server - supports all transport protocols
+  duckduckgo-mcp:
     build: .
-    container_name: duckduckgo-mcp-stdio
-    image: duckduckgo-mcp-server:latest
-    command: ["python", "-m", "duckduckgo_mcp_server.server", "--transport", "stdio"]
-    profiles:
-      - stdio
+    container_name: duckduckgo-mcp-server
+    image: duckduckgo-mcp-server:unified
     restart: unless-stopped
     environment:
       - PYTHONPATH=/app/src
-      - LOG_LEVEL=INFO
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - TRANSPORT_MODE=${TRANSPORT_MODE:-auto}
+      - HTTP_HOST=${HTTP_HOST:-0.0.0.0}
+      - HTTP_PORT=${HTTP_PORT:-8080}
+      - SSE_HOST=${SSE_HOST:-0.0.0.0}
+      - SSE_PORT=${SSE_PORT:-8081}
     networks:
       - mcp-network
+    ports:
+      - "${HTTP_PORT:-8080}:8080"  # HTTP
+      - "${SSE_PORT:-8081}:8081"  # SSE
+
+  # STDIO transport service (for direct integration)
+  duckduckgo-stdio:
+    extends: duckduckgo-mcp
+    container_name: duckduckgo-mcp-stdio
+    environment:
+      - TRANSPORT_MODE=stdio
+    profiles:
+      - stdio
+      - legacy
+    ports: []  # No ports needed for stdio
 
   # HTTP transport service
   duckduckgo-http:
-    build: .
+    extends: duckduckgo-mcp
     container_name: duckduckgo-mcp-http
-    image: duckduckgo-mcp-server:latest
-    command: ["python", "-m", "duckduckgo_mcp_server.server", "--transport", "http", "--host", "0.0.0.0", "--port", "8080"]
+    environment:
+      - TRANSPORT_MODE=http
+      - HTTP_PORT=${HTTP_PORT:-8080}
     profiles:
       - http
-      - all
-    restart: unless-stopped
+      - single
     ports:
-      - "8080:8080"
-    environment:
-      - PYTHONPATH=/app/src
-      - LOG_LEVEL=INFO
-    networks:
-      - mcp-network
+      - "${HTTP_PORT:-8080}:8080"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
@@ -42,21 +53,16 @@ services:
 
   # SSE transport service
   duckduckgo-sse:
-    build: .
+    extends: duckduckgo-mcp
     container_name: duckduckgo-mcp-sse
-    image: duckduckgo-mcp-server:latest
-    command: ["python", "-m", "duckduckgo_mcp_server.server", "--transport", "sse", "--host", "0.0.0.0", "--port", "8081"]
+    environment:
+      - TRANSPORT_MODE=sse
+      - SSE_PORT=${SSE_PORT:-8081}
     profiles:
       - sse
-      - all
-    restart: unless-stopped
+      - single
     ports:
-      - "8081:8081"
-    environment:
-      - PYTHONPATH=/app/src
-      - LOG_LEVEL=INFO
-    networks:
-      - mcp-network
+      - "${SSE_PORT:-8081}:8081"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
       interval: 30s
@@ -64,26 +70,66 @@ services:
       retries: 3
       start_period: 40s
 
-  # Hybrid service (runs both HTTP and SSE)
+  # Hybrid service (runs both HTTP and SSE in single process)
   duckduckgo-hybrid:
-    build: .
+    extends: duckduckgo-mcp
     container_name: duckduckgo-mcp-hybrid
-    image: duckduckgo-mcp-server:latest
-    command: ["python", "-m", "duckduckgo_mcp_server.server", "--transport", "hybrid"]
+    environment:
+      - TRANSPORT_MODE=hybrid
+      - HTTP_PORT=${HTTP_PORT:-8080}
+      - SSE_PORT=${SSE_PORT:-8081}
     profiles:
       - hybrid
       - production
-    restart: unless-stopped
+      - unified
     ports:
-      - "8080:8080"  # HTTP
-      - "8081:8081"  # SSE
-    environment:
-      - PYTHONPATH=/app/src
-      - LOG_LEVEL=INFO
-    networks:
-      - mcp-network
+      - "${HTTP_PORT:-8080}:8080"  # HTTP
+      - "${SSE_PORT:-8081}:8081"  # SSE
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Multi-process service (runs all transports in separate processes)
+  duckduckgo-multi:
+    extends: duckduckgo-mcp
+    container_name: duckduckgo-mcp-multi
+    environment:
+      - TRANSPORT_MODE=multi
+      - HTTP_PORT=${HTTP_PORT:-8080}
+      - SSE_PORT=${SSE_PORT:-8081}
+    profiles:
+      - multi
+      - advanced
+    ports:
+      - "${HTTP_PORT:-8080}:8080"  # HTTP
+      - "${SSE_PORT:-8081}:8081"  # SSE
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Auto-detect service (automatically selects best transport)
+  duckduckgo-auto:
+    extends: duckduckgo-mcp
+    container_name: duckduckgo-mcp-auto
+    environment:
+      - TRANSPORT_MODE=auto
+      - HTTP_PORT=${HTTP_PORT:-8080}
+      - SSE_PORT=${SSE_PORT:-8081}
+    profiles:
+      - auto
+      - default
+      - smart
+    ports:
+      - "${HTTP_PORT:-8080}:8080"  # HTTP
+      - "${SSE_PORT:-8081}:8081"  # SSE
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -f http://localhost:8080/health 2>/dev/null || curl -f http://localhost:8081/health 2>/dev/null"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -100,7 +146,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./ssl:/etc/nginx/ssl:ro
     depends_on:
       - duckduckgo-hybrid
