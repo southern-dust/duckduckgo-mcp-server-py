@@ -211,3 +211,7 @@ reports/
 # Temporary files
 tmp/
 temp/
+
+# Project documentation files (kept locally only)
+CLAUDE.md
+
