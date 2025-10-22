@@ -21,6 +21,10 @@ RUN pip install --no-cache-dir -e .
 # Copy source code
 COPY src/ ./src/
 
+# Copy startup script
+COPY scripts/docker/docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # Create non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
@@ -28,9 +32,9 @@ USER appuser
 # Expose ports for different transport modes
 EXPOSE 8080 8081
 
-# Health check
+# Enhanced health check that works for all transport modes
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+    CMD curl -f http://localhost:8080/health 2>/dev/null || curl -f http://localhost:8081/health 2>/dev/null || exit 1
 
-# Default command (stdio transport)
-CMD ["python", "-m", "duckduckgo_mcp_server.server", "--transport", "stdio"]
+# Use the entrypoint script for smart transport selection
+ENTRYPOINT ["docker-entrypoint.sh"]

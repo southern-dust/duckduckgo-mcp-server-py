@@ -1,14 +1,21 @@
-# DuckDuckGo MCP Server (Python Implementation)
+# DuckDuckGo MCP Server Python Implementation
 
-A Python-based Model Context Protocol (MCP) server that provides DuckDuckGo search functionality with support for multiple transport modes: stdio, HTTP, and Server-Sent Events (SSE).
+[English](README_EN.md) | [中文](README.md)
 
-## Features
+## 项目概述 / Project Overview
 
-- **Multi-Transport Support**: Choose between stdio, HTTP, or SSE transports based on your use case
-- **Docker Ready**: Full Docker and Docker Compose support for easy deployment
-- **Rate Limiting**: Built-in rate limiting to prevent abuse (1 request/second, 15000 requests/month)
-- **Health Checks**: Comprehensive health monitoring and status endpoints
-- **Production Ready**: Nginx reverse proxy configuration and Redis support for enhanced deployments
+这是一个功能完整的 DuckDuckGo 搜索 MCP (Model Context Protocol) 服务器的 Python 实现，支持多种传输方式和生产级部署配置。
+
+This is a comprehensive Python implementation of a DuckDuckGo Search MCP (Model Context Protocol) server with multi-transport support and production-ready deployment configurations.
+
+## ✨ 主要特性 / Key Features
+
+- 🔍 **DuckDuckGo 搜索集成** / **DuckDuckGo Search Integration**: 无需 API 密钥的 Web 搜索功能 / Web search functionality without API keys
+- 🚀 **多传输协议支持** / **Multi-Transport Support**: STDIO, HTTP, SSE, and Hybrid modes
+- 🐳 **Docker 部署就绪** / **Docker Ready**: 完整的容器化部署方案 / Complete containerized deployment solution
+- 🛡️ **速率限制** / **Rate Limiting**: 内置的智能速率控制 / Built-in intelligent rate control
+- 🔄 **高可用性** / **High Availability**: 优雅降级和错误恢复机制 / Graceful degradation and error recovery
+- 📊 **监控就绪** / **Monitoring Ready**: 健康检查和状态监控端点 / Health checks and status monitoring endpoints
 
 ## Transport Modes
 
